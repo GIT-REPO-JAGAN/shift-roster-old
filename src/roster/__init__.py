@@ -4,6 +4,7 @@ from .config import AppConfig, load as load_config
 from .loader import Employee, load_employees
 from .scheduler import ShiftScheduler, EmployeeSchedule
 from .writer import write_workbook
+from .prompt import run_wizard
 
 __all__ = [
     "AppConfig",
@@ -13,4 +14,5 @@ __all__ = [
     "ShiftScheduler",
     "EmployeeSchedule",
     "write_workbook",
+    "run_wizard",
 ]
