@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShiftScheduler — Roster Management</title>
+<style>
+/* ── Reset & Base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:          #0d1117;
+  --sidebar-bg:  #161b22;
+  --card-bg:     #1c2333;
+  --card-border: #30363d;
+  --input-bg:    #0d1117;
+  --input-border:#30363d;
+  --text:        #e6edf3;
+  --text-muted:  #8b949e;
+  --text-dim:    #6e7681;
+  --accent:      #58a6ff;
+  --accent-glow: rgba(88,166,255,.18);
+  --green:       #3fb950;
+  --green-bg:    rgba(63,185,80,.12);
+  --red:         #f85149;
+  --red-bg:      rgba(248,81,73,.12);
+  --yellow:      #d29922;
+  --step-active: #1f6feb;
+  --step-done:   #238636;
+  --radius:      10px;
+  --shadow:      0 4px 24px rgba(0,0,0,.4);
+}
+
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────────────── */
+.sidebar {
+  width: 260px;
+  min-width: 260px;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--card-border);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 0;
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px 24px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.brand-icon {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, #388bfd, #58a6ff);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+
+.brand-name  { font-size: 15px; font-weight: 700; color: var(--text); }
+.brand-sub   { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+.sidebar-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 20px 20px 10px;
+}
+
+.step-list { list-style: none; padding: 0 12px; }
+
+.step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 10px;
+  border-radius: 8px;
+  cursor: default;
+  transition: background .15s;
+  margin-bottom: 4px;
+}
+
+.step-item.active { background: rgba(31,111,235,.18); }
+.step-item.done   { opacity: .7; }
+
+.step-num {
+  width: 26px; height: 26px; min-width: 26px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  background: var(--card-border);
+  color: var(--text-muted);
+  transition: all .2s;
+}
+
+.step-item.active .step-num { background: var(--step-active); color: #fff; }
+.step-item.done   .step-num { background: var(--step-done);   color: #fff; }
+
+.step-info { display: flex; flex-direction: column; gap: 2px; }
+.step-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.step-desc  { font-size: 11px; color: var(--text-muted); }
+
+.step-item.active .step-title { color: var(--accent); }
+
+/* ── Main ─────────────────────────────────────────────────────────────────── */
+.main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 36px 48px;
+}
+
+.page-title { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+.page-sub   { font-size: 14px; color: var(--text-muted); margin-bottom: 28px; max-width: 620px; }
+
+/* ── Card grid ────────────────────────────────────────────────────────────── */
+.card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 22px;
+  transition: border-color .2s;
+}
+
+.card:focus-within  { border-color: var(--accent); }
+.card.full-width    { grid-column: 1 / -1; }
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.card-icon {
+  font-size: 22px;
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(88,166,255,.1);
+  border-radius: 8px;
+}
+
+.card-title { font-size: 15px; font-weight: 600; }
+.card-sub   { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Drop zone ────────────────────────────────────────────────────────────── */
+.dropzone {
+  border: 2px dashed var(--input-border);
+  border-radius: 8px;
+  padding: 36px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  background: var(--input-bg);
+  position: relative;
+}
+
+.dropzone:hover, .dropzone.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.dropzone.has-file {
+  border-color: var(--green);
+  background: var(--green-bg);
+}
+
+.dropzone input[type="file"] {
+  position: absolute; inset: 0;
+  opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+
+.dz-icon  { font-size: 32px; margin-bottom: 10px; display: block; }
+.dz-text  { font-size: 14px; font-weight: 600; color: var(--text); }
+.dz-sub   { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.dz-fname { font-size: 13px; color: var(--green); font-weight: 600; margin-top: 6px; }
+
+/* ── Date range ───────────────────────────────────────────────────────────── */
+.date-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.date-arrow { color: var(--text-muted); font-size: 18px; padding: 0 4px; }
+
+.field-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+input[type="date"], input[type="text"], textarea {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  padding: 9px 12px;
+  width: 100%;
+  outline: none;
+  transition: border-color .15s;
+  font-family: inherit;
+}
+
+input[type="date"]:focus,
+input[type="text"]:focus,
+textarea:focus {
+  border-color: var(--accent);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.6);
+  cursor: pointer;
+}
+
+.date-field { flex: 1; }
+
+/* ── Holidays input ───────────────────────────────────────────────────────── */
+.holidays-input-wrap { position: relative; }
+
+.holidays-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  min-height: 28px;
+}
+
+.pill {
+  background: rgba(210,153,34,.15);
+  border: 1px solid rgba(210,153,34,.35);
+  color: var(--yellow);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ── Shift rules textarea ─────────────────────────────────────────────────── */
+.rules-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.btn-link {
+  background: none; border: none; cursor: pointer;
+  color: var(--accent); font-size: 12px; padding: 0;
+  text-decoration: underline;
+}
+
+.rules-textarea {
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  resize: vertical;
+  min-height: 180px;
+}
+
+.rules-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 8px;
+}
+
+/* ── Planned leaves ───────────────────────────────────────────────────────── */
+.leaves-textarea {
+  font-size: 13px;
+  line-height: 1.6;
+  min-height: 90px;
+  resize: vertical;
+}
+
+/* ── Parsed preview table ─────────────────────────────────────────────────── */
+.preview-wrap {
+  margin-top: 14px;
+  display: none;
+}
+
+.preview-wrap.visible { display: block; }
+
+.preview-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 8px;
+}
+
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.preview-table th {
+  text-align: left;
+  padding: 6px 10px;
+  background: rgba(255,255,255,.05);
+  color: var(--text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.preview-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(48,54,61,.6);
+  color: var(--text);
+}
+
+.badge {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.badge-shift   { background: rgba(88,166,255,.15); color: var(--accent); }
+.badge-every5  { background: rgba(63,185,80,.12);  color: var(--green); }
+.badge-weekend { background: rgba(210,153,34,.12); color: var(--yellow); }
+
+/* ── Generate button ──────────────────────────────────────────────────────── */
+.generate-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.btn-generate {
+  background: linear-gradient(135deg, #388bfd 0%, #58a6ff 100%);
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  padding: 14px 48px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 20px rgba(88,166,255,.35);
+  transition: all .2s;
+  letter-spacing: .02em;
+}
+
+.btn-generate:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(88,166,255,.45);
+}
+
+.btn-generate:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-icon { font-size: 18px; }
+
+/* ── Toast / Alert ────────────────────────────────────────────────────────── */
+.toast-wrap {
+  position: fixed;
+  bottom: 28px; right: 28px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast {
+  min-width: 300px; max-width: 480px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+  animation: slideIn .3s ease;
+  pointer-events: all;
+  box-shadow: var(--shadow);
+}
+
+.toast.success { background: var(--green-bg); border: 1px solid rgba(63,185,80,.4); }
+.toast.error   { background: var(--red-bg);   border: 1px solid rgba(248,81,73,.4); }
+.toast-ico  { font-size: 18px; margin-top: 1px; }
+.toast-msg  { flex: 1; line-height: 1.5; }
+.toast-close {
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 16px; padding: 0; line-height: 1;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(120%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* ── Spinner overlay ──────────────────────────────────────────────────────── */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(13,17,23,.75);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 8888;
+  backdrop-filter: blur(2px);
+}
+
+.overlay.active { display: flex; }
+
+.spinner-box {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 36px 48px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.spinner {
+  width: 52px; height: 52px;
+  border: 4px solid var(--card-border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  margin: 0 auto 18px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.spinner-label { font-size: 15px; font-weight: 600; color: var(--text); }
+.spinner-sub   { font-size: 13px; color: var(--text-muted); margin-top: 6px; }
+
+/* ── Scrollbar ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ────────────────────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-icon">📋</div>
+    <div>
+      <div class="brand-name">ShiftScheduler</div>
+      <div class="brand-sub">Roster Management</div>
+    </div>
+  </div>
+
+  <div class="sidebar-label">How it works</div>
+  <ul class="step-list" id="stepList">
+    <li class="step-item active" data-step="1">
+      <div class="step-num">1</div>
+      <div class="step-info">
+        <div class="step-title">Upload Roster</div>
+        <div class="step-desc">Upload .xlsx file</div>
+      </div>
+    </li>
+    <li class="step-item" data-step="2">
+      <div class="step-num">2</div>
+      <div class="step-info">
+        <div class="step-title">Set Date Range</div>
+        <div class="step-desc">Pick start &amp; end dates</div>
+      </div>
+    </li>
+    <li class="step-item" data-step="3">
+      <div class="step-num">3</div>
+      <div class="step-info">
+        <div class="step-title">Add Shifts &amp; Leaves</div>
+        <div class="step-desc">Paste rules table</div>
+      </div>
+    </li>
+    <li class="step-item" data-step="4">
+      <div class="step-num">4</div>
+      <div class="step-info">
+        <div class="step-title">Generate</div>
+        <div class="step-desc">Download schedule</div>
+      </div>
+    </li>
+  </ul>
+</aside>
+
+<!-- ── Main ───────────────────────────────────────────────────────────────── -->
+<main class="main">
+  <h1 class="page-title">Shift Schedule Generator</h1>
+  <p class="page-sub">Upload your staff roster, specify the schedule period, and paste shift assignments to generate a fully formatted Excel schedule.</p>
+
+  <form id="rosterForm" novalidate>
+
+    <!-- Row 1: File + Date Range -->
+    <div class="card-grid">
+
+      <!-- Roster File -->
+      <div class="card" id="cardFile">
+        <div class="card-header">
+          <div class="card-icon">📁</div>
+          <div>
+            <div class="card-title">Roster File</div>
+            <div class="card-sub">Name · Email · Skill · Location (.xlsx)</div>
+          </div>
+        </div>
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="rosterFile" name="roster_file" accept=".xlsx,.xls" required>
+          <span class="dz-icon" id="dzIcon">📄</span>
+          <div class="dz-text" id="dzText">Drop your roster here</div>
+          <div class="dz-sub" id="dzSub">or click to browse — .xlsx only</div>
+          <div class="dz-fname" id="dzFname"></div>
+        </div>
+      </div>
+
+      <!-- Date Range + Holidays -->
+      <div class="card" id="cardDate">
+        <div class="card-header">
+          <div class="card-icon">📅</div>
+          <div>
+            <div class="card-title">Date Range</div>
+            <div class="card-sub">Schedule period (max 366 days)</div>
+          </div>
+        </div>
+
+        <div class="date-row">
+          <div class="date-field">
+            <div class="field-label">Start Date</div>
+            <input type="date" id="startDate" name="start_date" value="2026-06-01" required>
+          </div>
+          <div class="date-arrow">→</div>
+          <div class="date-field">
+            <div class="field-label">End Date</div>
+            <input type="date" id="endDate" name="end_date" value="2026-06-30" required>
+          </div>
+        </div>
+
+        <div style="margin-top:16px">
+          <div class="field-label">Account Holiday Dates (day numbers, comma-separated)</div>
+          <input type="text" id="holidays" name="holidays"
+                 placeholder="e.g.  05, 09, 16" value="05, 09, 16">
+          <div class="holidays-pills" id="holidayPills"></div>
+        </div>
+      </div>
+
+    </div><!-- /card-grid row 1 -->
+
+    <!-- Row 2: Shift Rules -->
+    <div class="card full-width">
+      <div class="rules-header">
+        <div class="card-header" style="margin-bottom:0">
+          <div class="card-icon">📋</div>
+          <div>
+            <div class="card-title">Shift Assignments</div>
+            <div class="card-sub">Paste the shift rules table — one skill per line</div>
+          </div>
+        </div>
+        <button type="button" class="btn-link" id="btnLoadDefaults">Load defaults</button>
+      </div>
+
+      <textarea class="rules-textarea" id="shiftRules" name="shift_rules"
+                placeholder="| Skill | Count | Shift | Week Off |&#10;| Monitoring | 2 | M / A / N | Every 5th day |"></textarea>
+
+      <div class="rules-hint">
+        Shift codes: <strong>M</strong> = Morning &nbsp;|&nbsp;
+        <strong>A</strong> = Afternoon &nbsp;|&nbsp;
+        <strong>N</strong> = Night &nbsp;|&nbsp;
+        <strong>E</strong> = Evening (SRE only)
+        &nbsp;&nbsp;·&nbsp;&nbsp;
+        Week off: <em>Saturday &amp; Sunday</em> or <em>Every 5th day</em>
+        &nbsp;&nbsp;·&nbsp;&nbsp;
+        Leave blank to use defaults.
+      </div>
+
+      <!-- Live preview -->
+      <div class="preview-wrap" id="previewWrap">
+        <div class="preview-label">Parsed Rules Preview</div>
+        <table class="preview-table">
+          <thead>
+            <tr>
+              <th>Skill</th><th>Count</th><th>Shifts</th><th>Week Off</th>
+            </tr>
+          </thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Row 3: Planned Leaves -->
+    <div class="card full-width">
+      <div class="card-header">
+        <div class="card-icon">🏖️</div>
+        <div>
+          <div class="card-title">Planned Leave Details <span style="color:var(--text-dim);font-weight:400;font-size:12px">(optional)</span></div>
+          <div class="card-sub">One entry per line &nbsp;·&nbsp; Format: &nbsp;<code style="color:var(--accent)">Employee Name – Planned Leave: 05, 08</code></div>
+        </div>
+      </div>
+      <textarea class="leaves-textarea" id="plannedLeaves" name="planned_leaves"
+                placeholder="Guru Prasad L – Planned Leave: 05, 08&#10;Alice – 10, 15"></textarea>
+    </div>
+
+    <!-- Generate -->
+    <div class="generate-wrap">
+      <button type="submit" class="btn-generate" id="btnGenerate">
+        <span class="btn-icon">⚡</span>
+        Generate Schedule
+      </button>
+    </div>
+
+  </form>
+</main>
+
+<!-- ── Spinner overlay ────────────────────────────────────────────────────── -->
+<div class="overlay" id="overlay">
+  <div class="spinner-box">
+    <div class="spinner"></div>
+    <div class="spinner-label">Generating Roster…</div>
+    <div class="spinner-sub">Building your Excel schedule</div>
+  </div>
+</div>
+
+<!-- ── Toast container ────────────────────────────────────────────────────── -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+
+<script>
+// ── Default shift rules table ──────────────────────────────────────────────
+const DEFAULT_RULES = `| Skill                   | Count | Shift     | Week Off          |
+| Monitoring              | 2     | M / A / N | Every 5th day     |
+| SRE Azure + Windows     | 1     | E only    | Saturday & Sunday |
+| Azure + Windows         | 2     | M / A / N | Saturday & Sunday |
+| Azure + Windows SME     | 1     | M / A / N | Saturday & Sunday |
+| OCI Azure + Windows     | 1     | M / A / N | Saturday & Sunday |
+| SRE OCI Azure + Linux   | 1     | M / A / N | Saturday & Sunday |
+| OCI Azure + Linux       | 2     | M / A / N | Every 5th day     |
+| OCI Azure + Linux SME   | 1     | M / A / N | Saturday & Sunday |
+| OCI Azure + Network AKS | 1     | M / A / N | Every 5th day     |`;
+
+// ── DOM refs ───────────────────────────────────────────────────────────────
+const form          = document.getElementById('rosterForm');
+const dropzone      = document.getElementById('dropzone');
+const fileInput     = document.getElementById('rosterFile');
+const dzIcon        = document.getElementById('dzIcon');
+const dzText        = document.getElementById('dzText');
+const dzSub         = document.getElementById('dzSub');
+const dzFname       = document.getElementById('dzFname');
+const holidayInput  = document.getElementById('holidays');
+const holidayPills  = document.getElementById('holidayPills');
+const rulesTA       = document.getElementById('shiftRules');
+const previewWrap   = document.getElementById('previewWrap');
+const previewBody   = document.getElementById('previewBody');
+const overlay       = document.getElementById('overlay');
+const btnGenerate   = document.getElementById('btnGenerate');
+const stepList      = document.getElementById('stepList');
+const startDate     = document.getElementById('startDate');
+const endDate       = document.getElementById('endDate');
+
+// ── Step tracking ──────────────────────────────────────────────────────────
+let completedSteps = new Set();
+
+function markStep(n, done = true) {
+  const items = stepList.querySelectorAll('.step-item');
+  items.forEach(el => {
+    const s = +el.dataset.step;
+    el.classList.remove('active','done');
+    if (s === n)            el.classList.add('active');
+    else if (completedSteps.has(s)) el.classList.add('done');
+  });
+  if (done) completedSteps.add(n);
+}
+
+// ── Drop zone ──────────────────────────────────────────────────────────────
+dropzone.addEventListener('dragover',  e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) applyFile(file);
+});
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) applyFile(fileInput.files[0]);
+});
+
+function applyFile(file) {
+  const ok = /\.(xlsx|xls)$/i.test(file.name);
+  dropzone.classList.toggle('has-file', ok);
+  if (ok) {
+    dzIcon.textContent  = '✅';
+    dzText.textContent  = 'File ready';
+    dzSub.textContent   = `${(file.size/1024).toFixed(1)} KB`;
+    dzFname.textContent = file.name;
+    markStep(1);
+    updateActiveStep();
+  } else {
+    showToast('error','Only .xlsx / .xls files are supported.');
+    dzIcon.textContent  = '⚠️';
+    dzText.textContent  = 'Invalid file type';
+    dzSub.textContent   = 'Please select a .xlsx file';
+    dzFname.textContent = '';
+    dropzone.classList.remove('has-file');
+  }
+}
+
+// ── Holiday pills ──────────────────────────────────────────────────────────
+holidayInput.addEventListener('input', renderPills);
+renderPills();
+
+function renderPills() {
+  const raw   = holidayInput.value.trim();
+  const days  = raw.split(/[,\s]+/).filter(d => /^\d{1,2}$/.test(d.trim()));
+  const month = startDate.value ? new Date(startDate.value).toLocaleString('en',{month:'short'}) : '';
+  holidayPills.innerHTML = days.map(d =>
+    `<span class="pill">${d.padStart(2,'0')} ${month}</span>`
+  ).join('');
+  if (days.length) { markStep(2); updateActiveStep(); }
+}
+
+startDate.addEventListener('change', () => { renderPills(); updateActiveStep(); });
+endDate.addEventListener('change',   () => updateActiveStep());
+
+// ── Shift rules: live parse preview ───────────────────────────────────────
+document.getElementById('btnLoadDefaults').addEventListener('click', () => {
+  rulesTA.value = DEFAULT_RULES;
+  parseRulesPreview();
+});
+
+rulesTA.addEventListener('input', parseRulesPreview);
+
+function parseRulesPreview() {
+  const lines = rulesTA.value.trim().split('\n')
+    .filter(l => l.includes('|') && !l.includes('---') && !l.match(/Skill\s*\|.*Count/i));
+
+  if (!lines.length) { previewWrap.classList.remove('visible'); return; }
+
+  const rows = lines.map(line => {
+    const cells = line.split('|').map(c => c.trim()).filter(Boolean);
+    if (cells.length < 4) return null;
+    const skill    = cells[0];
+    const count    = cells[1];
+    const shift    = cells[2];
+    const weekOff  = cells[3];
+
+    const shifts = [];
+    if (/E only|^E$/i.test(shift)) shifts.push('E');
+    else { ['M','A','N','E'].forEach(s => { if (shift.toUpperCase().includes(s)) shifts.push(s); }); }
+
+    const isEvery5 = /5th|every/i.test(weekOff);
+    return { skill, count, shifts: shifts.join(' / ') || shift, isEvery5 };
+  }).filter(Boolean);
+
+  if (!rows.length) { previewWrap.classList.remove('visible'); return; }
+
+  previewBody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.skill}</td>
+      <td style="text-align:center">${r.count}</td>
+      <td><span class="badge badge-shift">${r.shifts}</span></td>
+      <td><span class="badge ${r.isEvery5 ? 'badge-every5':'badge-weekend'}">
+        ${r.isEvery5 ? 'Every 5th Day' : 'Sat & Sun'}
+      </span></td>
+    </tr>`).join('');
+
+  previewWrap.classList.add('visible');
+  markStep(3); updateActiveStep();
+}
+
+// ── Active step logic ──────────────────────────────────────────────────────
+function updateActiveStep() {
+  const hasFile  = dropzone.classList.contains('has-file');
+  const hasStart = !!startDate.value;
+  const hasEnd   = !!endDate.value;
+
+  if (!hasFile)               return markStep(1, false);
+  if (!hasStart || !hasEnd)   return markStep(2, false);
+  markStep(3, false);
+}
+
+// ── Form submit ────────────────────────────────────────────────────────────
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  if (!fileInput.files[0]) {
+    showToast('error', 'Please upload a roster .xlsx file first.');
+    return;
+  }
+  if (!startDate.value || !endDate.value) {
+    showToast('error', 'Please fill in both start and end dates.');
+    return;
+  }
+
+  const fd = new FormData(form);
+
+  // If file input wasn't picked via <input> (drag-drop), attach manually
+  if (!fd.get('roster_file') || !fd.get('roster_file').name) {
+    if (fileInput.files[0]) fd.set('roster_file', fileInput.files[0]);
+  }
+
+  overlay.classList.add('active');
+  btnGenerate.disabled = true;
+
+  try {
+    const res = await fetch('/api/generate', { method: 'POST', body: fd });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: `Server error ${res.status}` }));
+      throw new Error(err.error || 'Unknown error');
+    }
+
+    // Trigger download
+    const blob        = await res.blob();
+    const disposition = res.headers.get('Content-Disposition') || '';
+    const fnMatch     = disposition.match(/filename="?([^"]+)"?/);
+    const filename    = fnMatch ? fnMatch[1] : 'Roster-Out.xlsx';
+
+    const url  = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href  = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    markStep(4);
+    showToast('success', `✅ Roster generated and downloaded as <strong>${filename}</strong>`);
+
+  } catch (err) {
+    showToast('error', `Generation failed: ${err.message}`);
+    console.error(err);
+  } finally {
+    overlay.classList.remove('active');
+    btnGenerate.disabled = false;
+  }
+});
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function showToast(type, msg, duration = 6000) {
+  const wrap  = document.getElementById('toastWrap');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `
+    <span class="toast-ico">${type === 'success' ? '✅' : '❌'}</span>
+    <span class="toast-msg">${msg}</span>
+    <button class="toast-close" onclick="this.parentElement.remove()">✕</button>`;
+  wrap.appendChild(toast);
+  if (duration > 0) setTimeout(() => toast.remove(), duration);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+rulesTA.value = DEFAULT_RULES;
+parseRulesPreview();
+renderPills();
+</script>
+</body>
+</html>
