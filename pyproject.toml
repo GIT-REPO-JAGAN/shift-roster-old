@@ -1,0 +1,46 @@
+[build-system]
+requires      = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name        = "shift-roster"
+version     = "1.0.0"
+description = "Monthly shift roster generator — Excel input → Excel output"
+readme      = "README.md"
+requires-python = ">=3.11"
+
+dependencies = [
+    "pandas>=2.2",
+    "openpyxl>=3.1",
+    "xlsxwriter>=3.2",
+    "PyYAML>=6.0",
+    "rich>=13.0",
+    "questionary>=2.0",
+]
+
+[project.scripts]
+roster-generate = "roster.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# ─── pytest ────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths   = ["tests"]
+pythonpath  = ["src"]
+addopts     = "-v --tb=short"
+
+# ─── ruff (linting) ────────────────────────────────────────────────────────────
+[tool.ruff]
+line-length    = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select  = ["E", "F", "W", "I"]
+ignore  = ["E501"]
+
+# ─── mypy (type checking) ──────────────────────────────────────────────────────
+[tool.mypy]
+python_version  = "3.11"
+strict          = false
+ignore_missing_imports = true
