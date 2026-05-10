@@ -1,0 +1,93 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Shift Roster Configuration
+# Edit this file to change the roster period, holidays, and planned leaves.
+# All dates must be in YYYY-MM-DD format.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Input / Output file paths (relative to project root)
+input_file:  "data/input/Roster - Input.xlsx"
+output_file: "data/output/Roster - Out.xlsx"
+
+# Roster period
+roster_start: "2026-06-01"
+roster_end:   "2026-06-30"
+
+# Account holidays — mark as 'H' for all employees
+account_holidays:
+  - "2026-06-05"
+  - "2026-06-09"
+  - "2026-06-16"
+
+# Planned leaves per employee — mark as 'L'
+# Format:
+#   "Employee Full Name":
+#     - "YYYY-MM-DD"
+planned_leaves:
+  "Guru Prasad L":
+    - "2026-06-05"
+    - "2026-06-08"
+
+# ─── Skill Rules ─────────────────────────────────────────────────────────────
+# count     : minimum headcount required per day (informational)
+# shifts    : allowed shift codes  M=Morning A=Afternoon N=Night E=Evening
+# week_off  : "weekends" (Sat+Sun) | "every5th" (rotating 5th day)
+skill_rules:
+  "Monitoring":
+    count: 2
+    shifts: ["M", "A", "N"]
+    week_off: "every5th"
+
+  "SRE Azure + Windows":
+    count: 1
+    shifts: ["E"]
+    week_off: "weekends"
+
+  "Azure + Windows":
+    count: 2
+    shifts: ["M", "A", "N"]
+    week_off: "weekends"
+
+  "Azure + Windows SME":
+    count: 1
+    shifts: ["M", "A", "N"]
+    week_off: "weekends"
+
+  "OCI Azure + Windows":
+    count: 1
+    shifts: ["M", "A", "N"]
+    week_off: "weekends"
+
+  "SRE OCI Azure + Linux":
+    count: 1
+    shifts: ["M", "A", "N"]
+    week_off: "weekends"
+
+  "OCI Azure + Linux":
+    count: 2
+    shifts: ["M", "A", "N"]
+    week_off: "every5th"
+
+  "OCI Azure + Linux SME":
+    count: 1
+    shifts: ["M", "A", "N"]
+    week_off: "weekends"
+
+  "OCI Azure + Network AKS":
+    count: 1
+    shifts: ["M", "A", "N"]
+    week_off: "every5th"
+
+# ─── Skill Alias Map ─────────────────────────────────────────────────────────
+# Maps raw skill names from the input Excel → canonical skill names above.
+# Add new aliases here when the input file uses different spellings.
+skill_alias:
+  "Monitoring":               "Monitoring"
+  "AZURE SRE +Windows":       "SRE Azure + Windows"
+  "Azure + Windows":          "Azure + Windows"
+  "SME: Azure + Windows":     "Azure + Windows SME"
+  "SME:Windows + AZURE":      "Azure + Windows SME"
+  "OCI + AZURE Windows":      "OCI Azure + Windows"
+  "SRE: AZURE/OCI + Linux":   "SRE OCI Azure + Linux"
+  "OCI+Azure+inux Admin L2":  "OCI Azure + Linux"
+  "SME: Linux +OCI + Azure":  "OCI Azure + Linux SME"
+  "Azure+OCI Network, AKS":   "OCI Azure + Network AKS"
