@@ -1,0 +1,55 @@
+{
+  "name": "Shift Roster Generator",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",
+
+  // Install project dependencies when the container starts
+  "postCreateCommand": "pip install --quiet -r requirements-dev.txt && pip install --quiet -e .",
+
+  // VS Code extensions pre-installed in the devcontainer
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "ms-toolsai.jupyter",
+        "redhat.vscode-yaml",
+        "eamodio.gitlens"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": ["tests"],
+        "editor.formatOnSave": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.codeActionsOnSave": {
+            "source.fixAll.ruff": "explicit",
+            "source.organizeImports.ruff": "explicit"
+          }
+        },
+        "files.exclude": {
+          "**/__pycache__": true,
+          "**/*.pyc": true,
+          "**/.pytest_cache": true
+        }
+      }
+    }
+  },
+
+  // Forward no ports by default — add if you add a web UI later
+  "forwardPorts": [],
+
+  // Environment variables available inside the container
+  "containerEnv": {
+    "ROSTER_INPUT":  "${containerWorkspaceFolder}/data/input/Roster - Input.xlsx",
+    "ROSTER_OUTPUT": "${containerWorkspaceFolder}/data/output/Roster - Out.xlsx"
+  },
+
+  // Mount the project workspace
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/shift-roster,type=bind",
+  "workspaceFolder": "/workspaces/shift-roster",
+
+  // Run as non-root user
+  "remoteUser": "vscode"
+}
