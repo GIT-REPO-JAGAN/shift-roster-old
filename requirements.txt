@@ -1,6 +1,0 @@
-pandas>=2.2
-openpyxl>=3.1
-xlsxwriter>=3.2
-PyYAML>=6.0
-rich>=13.0
-questionary>=2.0
